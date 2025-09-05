@@ -1,3 +1,4 @@
+import VotingForm from '@/components/forms/VotingForm';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { Poll, PollOption } from '@/lib/types/database';
 import { notFound, redirect } from 'next/navigation';
@@ -11,7 +12,6 @@ interface PollDetailPageProps {
 async function getPollWithOptions(id: string): Promise<{ poll: Poll; options: PollOption[] } | null> {
   const supabase = await createServerSupabaseClient();
   
-  // Get poll
   const { data: poll, error: pollError } = await supabase
     .from('polls')
     .select('*')
@@ -23,7 +23,6 @@ async function getPollWithOptions(id: string): Promise<{ poll: Poll; options: Po
     return null;
   }
 
-  // Get poll options
   const { data: options, error: optionsError } = await supabase
     .from('poll_options')
     .select('*')
@@ -39,11 +38,10 @@ async function getPollWithOptions(id: string): Promise<{ poll: Poll; options: Po
 }
 
 export default async function PollDetailPage({ params }: PollDetailPageProps) {
-  // Check authentication on the server side
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (error || !user) {
+  if (!user) {
     redirect('/login');
   }
 
@@ -69,13 +67,8 @@ export default async function PollDetailPage({ params }: PollDetailPageProps) {
             </p>
           )}
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-gray-900">Options:</h2>
-            {options.map((option) => (
-              <div key={option.id} className="border border-gray-200 rounded-md p-4">
-                <p className="text-gray-800">{option.text}</p>
-              </div>
-            ))}
+          <div className="mb-8">
+            <VotingForm poll={poll} options={options} />
           </div>
 
           <div className="mt-8 pt-6 border-t border-gray-200">
@@ -85,15 +78,6 @@ export default async function PollDetailPage({ params }: PollDetailPageProps) {
                 <span>Expires: {new Date(poll.expires_at).toLocaleDateString()}</span>
               )}
             </div>
-          </div>
-
-          <div className="mt-6">
-            <p className="text-sm text-gray-600">
-              Share this poll with the link: <br />
-              <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                {`https://yourapp.com/polls/${poll.id}`}
-              </code>
-            </p>
           </div>
         </div>
       </div>
