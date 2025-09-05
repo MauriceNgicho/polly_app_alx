@@ -5,6 +5,18 @@ import { CreatePollData, CreatePollResponse } from '@/lib/types/database';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+/**
+ * Creates a new poll in the database.
+ *
+ * @param {CreatePollData} formData - The data for the new poll.
+ * @param {string} formData.title - The title of the poll.
+ * @param {string} [formData.description] - An optional description for the poll.
+ * @param {string[]} formData.options - An array of strings representing the poll options. Must contain at least two options.
+ * @param {string} [formData.expires_at] - An optional ISO 8601 timestamp for when the poll expires.
+ * @returns {Promise<CreatePollResponse>} A promise that resolves to an object containing the result of the operation.
+ * If successful, the object will have `success: true` and the created `poll` object.
+ * If unsuccessful, it will have `success: false` and an `error` message.
+ */
 export async function createPoll(formData: CreatePollData): Promise<CreatePollResponse> {
   try {
     const supabase = await createServerSupabaseClient();
@@ -95,6 +107,15 @@ export async function createPoll(formData: CreatePollData): Promise<CreatePollRe
   }
 }
 
+/**
+ * A server action that wraps `createPoll` and handles redirection.
+ * It constructs the poll data from a FormData object and, on successful poll creation,
+ * redirects the user to the main polls page with a success message.
+ * If creation fails, it throws an error to be caught by the calling form.
+ *
+ * @param {FormData} formData - The form data submitted by the user.
+ * Expected fields are title, description, option1, option2, etc., and an optional expires_at.
+ */
 export async function createPollAndRedirect(formData: FormData) {
   const pollData: CreatePollData = {
     title: formData.get('title') as string,
@@ -120,6 +141,14 @@ export async function createPollAndRedirect(formData: FormData) {
   }
 }
 
+/**
+ * Deletes a specific poll from the database.
+ * This server action ensures that the user is logged in and is the owner of the poll
+ * before proceeding with the deletion. It also deletes associated poll options.
+ *
+ * @param {string} pollId - The UUID of the poll to be deleted.
+ * @throws {Error} If the user is not authenticated, not the poll owner, or if the poll is not found.
+ */
 export async function deletePoll(pollId: string) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -178,6 +207,16 @@ export async function deletePoll(pollId: string) {
   }
 }
 
+/**
+ * Updates an existing poll with new data.
+ * This server action validates that the user is the poll owner. It updates the poll's
+ * title and description. After a successful update, it revalidates relevant paths
+ * and redirects the user back to the main polls list.
+ *
+ * @param {string} pollId - The UUID of the poll to update.
+ * @param {FormData} formData - The form data containing the new title and description.
+ * @throws {Error} If the user is not authenticated, not the poll owner, or if the update fails.
+ */
 export async function updatePoll(pollId: string, formData: FormData) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -235,6 +274,16 @@ export async function updatePoll(pollId: string, formData: FormData) {
   }
 }
 
+/**
+ * Submits a vote for a specific poll option.
+ * This server action ensures the user is logged in and has not already voted on this poll.
+ * If the vote is valid, it inserts a new record into the 'votes' table and revalidates
+ * the poll detail page to reflect the new vote.
+ *
+ * @param {string} pollId - The UUID of the poll being voted on.
+ * @param {string} optionId - The UUID of the selected poll option.
+ * @throws {Error} If the user is not logged in, has already voted, or if the database operation fails.
+ */
 export async function submitVote(pollId: string, optionId: string) {
   try {
     const supabase = await createServerSupabaseClient();
