@@ -177,3 +177,112 @@ export async function deletePoll(pollId: string) {
     throw error;
   }
 }
+
+export async function updatePoll(pollId: string, formData: FormData) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      throw new Error('You must be logged in to update a poll');
+    }
+
+    const { data: poll, error: pollError } = await supabase
+      .from('polls')
+      .select('user_id')
+      .eq('id', pollId)
+      .single();
+
+    if (pollError || !poll) {
+      throw new Error('Poll not found');
+    }
+
+    if (poll.user_id !== user.id) {
+      throw new Error('You can only update your own polls');
+    }
+
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+
+    if (!title.trim()) {
+      throw new Error('Poll title is required');
+    }
+
+    const { error: updateError } = await supabase
+      .from('polls')
+      .update({
+        title: title.trim(),
+        description: description?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pollId);
+
+    if (updateError) {
+      console.error('Error updating poll:', updateError);
+      throw new Error('Failed to update poll');
+    }
+
+    revalidatePath('/polls');
+    revalidatePath(`/polls/${pollId}`);
+    revalidatePath(`/polls/${pollId}/edit`);
+    
+    redirect('/polls?success=true&message=Poll updated successfully!');
+
+  } catch (error) {
+    console.error('Error updating poll:', error);
+    throw error;
+  }
+}
+
+export async function submitVote(pollId: string, optionId: string) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      throw new Error('You must be logged in to vote.');
+    }
+
+    // Check if the user has already voted
+    const { data: existingVote, error: voteCheckError } = await supabase
+      .from('votes')
+      .select('id')
+      .eq('poll_id', pollId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (voteCheckError && voteCheckError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Error checking for existing vote:', voteCheckError);
+      throw new Error('Could not verify your vote. Please try again.');
+    }
+
+    if (existingVote) {
+      throw new Error('You have already voted on this poll.');
+    }
+
+    // Record the new vote
+    const { error: insertError } = await supabase
+      .from('votes')
+      .insert({
+        poll_id: pollId,
+        option_id: optionId,
+        user_id: user.id,
+      });
+
+    if (insertError) {
+      console.error('Error submitting vote:', insertError);
+      throw new Error('Failed to submit your vote.');
+    }
+
+    revalidatePath(`/polls/${pollId}`);
+    // Optional: revalidate a results-specific page if you have one
+    // revalidatePath(`/polls/${pollId}/results`);
+
+  } catch (error) {
+    console.error('Error in submitVote:', error);
+    // Re-throw the original error to be caught by the form handler
+    throw error;
+  }
+}
