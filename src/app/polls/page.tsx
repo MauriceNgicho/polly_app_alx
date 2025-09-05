@@ -1,3 +1,4 @@
+import { PollActions } from '@/components/polls/PollActions';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { Poll } from '@/lib/types/database';
 import Link from 'next/link';
@@ -80,16 +81,18 @@ export default async function PollsPage({
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {polls.map((poll) => (
-              <div key={poll.id} className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {poll.title}
-                </h3>
-                {poll.description && (
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {poll.description}
-                  </p>
-                )}
-                <div className="flex justify-between items-center">
+              <div key={poll.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                <div className="flex-grow">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    {poll.title}
+                  </h3>
+                  {poll.description && (
+                    <p className="text-gray-600 mb-4 line-clamp-3">
+                      {poll.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex justify-between items-center mt-4">
                   <span className="text-sm text-gray-500">
                     {new Date(poll.created_at).toLocaleDateString()}
                   </span>
@@ -100,6 +103,11 @@ export default async function PollsPage({
                     View Poll →
                   </Link>
                 </div>
+                {poll.user_id === user.id && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <PollActions pollId={poll.id} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
