@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { deletePoll } from '@/lib/actions/polls';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface PollActionsProps {
@@ -10,6 +10,7 @@ interface PollActionsProps {
 
 export function PollActions({ pollId }: PollActionsProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
@@ -18,8 +19,16 @@ export function PollActions({ pollId }: PollActionsProps) {
 
     setIsDeleting(true);
     try {
-      await deletePoll(pollId);
-      // The page will revalidate automatically
+      const response = await fetch(`/api/polls/${pollId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to delete poll');
+      }
+      
+      router.refresh();
     } catch (error) {
       console.error('Error deleting poll:', error);
       alert('Failed to delete poll. Please try again.');

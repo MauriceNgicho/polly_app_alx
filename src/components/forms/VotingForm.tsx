@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { submitVote } from '@/lib/actions/polls';
 import { Poll, PollOption } from '@/lib/types/database';
 
 interface VotingFormProps {
@@ -26,7 +25,19 @@ export default function VotingForm({ poll, options }: VotingFormProps) {
     setError(null);
 
     try {
-      await submitVote(poll.id, selectedOption);
+      const response = await fetch(`/api/polls/${poll.id}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ optionId: selectedOption }),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to submit vote');
+      }
+      
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during submission.');

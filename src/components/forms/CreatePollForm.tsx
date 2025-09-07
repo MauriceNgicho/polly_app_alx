@@ -1,19 +1,46 @@
 'use client';
 
 import { useState } from 'react';
-import { createPollAndRedirect } from '@/lib/actions/polls';
+import { useRouter } from 'next/navigation';
 
 export default function CreatePollForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
+    const formData = new FormData(event.currentTarget);
+    const pollData = {
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      options: [
+        formData.get('option1') as string,
+        formData.get('option2') as string,
+        formData.get('option3') as string,
+        formData.get('option4') as string,
+      ].filter(Boolean),
+      expires_at: formData.get('expires_at') as string || undefined,
+    };
+
     try {
-      await createPollAndRedirect(formData);
-      // Note: The redirect will happen automatically, so this line won't execute
+      const response = await fetch('/api/polls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pollData),
+      });
+
+      if (!response.ok) {
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to create poll');
+      }
+
+      router.push('/polls?success=true&message=Poll created successfully!');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsSubmitting(false);
@@ -24,7 +51,7 @@ export default function CreatePollForm() {
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Poll</h1>
       
-      <form action={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
             Poll Title *
