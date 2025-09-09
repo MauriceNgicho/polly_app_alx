@@ -10,6 +10,7 @@ interface PollActionsProps {
 
 export function PollActions({ pollId }: PollActionsProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const router = useRouter();
 
   const handleDelete = async () => {
@@ -37,8 +38,39 @@ export function PollActions({ pollId }: PollActionsProps) {
     }
   };
 
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const pollUrl = `${window.location.origin}/polls/${pollId}`;
+      await navigator.clipboard.writeText(pollUrl);
+      
+      // Show a brief success message
+      const originalText = 'Share Poll';
+      const button = document.querySelector(`[data-share-button="${pollId}"]`) as HTMLButtonElement;
+      if (button) {
+        button.textContent = 'Copied!';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      alert('Failed to copy link to clipboard. Please try again.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <div className="flex items-center space-x-2">
+      <button
+        onClick={handleShare}
+        disabled={isSharing}
+        data-share-button={pollId}
+        className="text-green-600 hover:text-green-700 text-sm font-medium disabled:opacity-50"
+      >
+        {isSharing ? 'Sharing...' : 'Share Poll'}
+      </button>
       <Link
         href={`/polls/${pollId}/edit`}
         className="text-blue-600 hover:text-blue-700 text-sm font-medium"
